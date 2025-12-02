@@ -1,13 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import user_routes,auth_routes,role_route,ticket_route
+from app.routes import user_routes, auth_routes, role_route, ticket_route
 from app.config.db import Base, engine
 
 app = FastAPI(title="MyApi with Roles & Permissions")
 
+origin = [
+    "http://192.168.100.151:5173",
+    "http://localhost:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origin,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -17,6 +22,7 @@ app.include_router(user_routes.router)
 app.include_router(auth_routes.router)
 app.include_router(role_route.router)
 app.include_router(ticket_route.router)
+
 
 @app.on_event("startup")
 def on_startup():
