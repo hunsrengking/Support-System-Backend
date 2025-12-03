@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.get("/role")
-@requirepermissions("view_roles")
+# @requirepermissions("view_roles")
 def listRoles(db: Session = Depends(get_db)):
     roles = role_service.getAllRole(db)
     return [
@@ -25,7 +25,7 @@ def listRoles(db: Session = Depends(get_db)):
 
 
 @router.get("/role/{role_id}")
-@requirepermissions("view_roles")
+# @requirepermissions("view_roles")
 def getRole(role_id: int, db: Session = Depends(get_db)):
     role = role_service.getRoleById(db, role_id)
     if not role:
@@ -34,7 +34,9 @@ def getRole(role_id: int, db: Session = Depends(get_db)):
         "id": role.id,
         "name": role.name,
         "description": getattr(role, "description", None),
-        "permissions": [p.name for p in getattr(role, "permissions", [])],
+        "permissions": [
+            {"id": p.id, "name": p.name} for p in getattr(role, "permissions", [])
+        ],
     }
 
 
@@ -51,7 +53,7 @@ def createRole(date: RoleCreateReq, db: Session = Depends(get_db)):
 
 
 @router.put("/role/{role_id}/permissions")
-@requirepermissions("edit_roles")
+# @requirepermissions("edit_roles")
 def updatePermissions(role_id: int, date: RolePermsReq, db: Session = Depends(get_db)):
     role = role_service.updateRolePermissions(db, role_id, date.permissions)
     return {
@@ -59,3 +61,16 @@ def updatePermissions(role_id: int, date: RolePermsReq, db: Session = Depends(ge
         "name": role.name,
         "permissions": [p.name for p in role.permissions],
     }
+
+
+@router.get("/permissions")
+# @requirepermissions("view_permissions")
+def listPermissions(db: Session = Depends(get_db)):
+    permissions = role_service.getAllPermissions(db)
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+        }
+        for p in permissions
+    ]

@@ -66,3 +66,6 @@ def updateRolePermissions(db: Session, role_id: int, permission_names: List[str]
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update role permissions")
 
     return role
+
+def getAllPermissions(db: Session) -> List[Permission]:
+    return db.query(Permission).all()

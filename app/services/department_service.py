@@ -1,15 +1,15 @@
-from app.schema.user_schema import User
+from app.schema.departments_schema import Department
 from typing import Optional
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 
 
 def getAllDepartment(db):
-    return db.query(User).all()
+    return db.query(Department).all()
 
 
 def getDepartmentById(db, department_id: int):
-    return db.query(User).filter(User.id == department_id).first()
+    return db.query(Department).filter(Department.id == department_id).first()
 
 
 def createDepartment(db, name: str):
@@ -17,13 +17,13 @@ def createDepartment(db, name: str):
     if not name:
         raise HTTPException(status_code=400, detail="Department name required")
 
-    existing = db.query(User).filter(User.username == name).first()
+    existing = db.query(Department).filter(Department.username == name).first()
     if existing:
         raise HTTPException(
             status_code=400, detail="Department with this name already exists"
         )
 
-    department = User(username=name)
+    department = Department(username=name)
     try:
         db.add(department)
         db.commit()
@@ -36,7 +36,7 @@ def createDepartment(db, name: str):
 
 
 def updateDepartment(db, department_id: int, name: Optional[str] = None):
-    department = db.query(User).filter(User.id == department_id).first()
+    department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
         return None
     if name:
