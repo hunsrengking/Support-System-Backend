@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Request  
 from sqlalchemy.orm import Session
 from app.services import user_service
 from app.config.db import get_db
@@ -8,14 +8,14 @@ from app.middlewares.auth_middlewares import requirepermissions
 router = APIRouter()
 
 
-@router.get("/users/")
-@requirepermissions("view_users")
+@router.get("/users")
+# @requirepermissions("view_users")
 def list_users(db: Session = Depends(get_db)):
     return user_service.getAllUser(db)
 
 
 @router.get("/users/{id}")
-@requirepermissions("view_users")
+# @requirepermissions("view_users")
 def getUserById(id: int, db: Session = Depends(get_db)):
     user = user_service.getUserById(db, id)
     if not user:
@@ -23,8 +23,8 @@ def getUserById(id: int, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/users/")
-@requirepermissions("create_users")
+@router.post("/users")
+# @requirepermissions("create_users")
 def createUser(data: UserModel, db: Session = Depends(get_db)):
     return (
         user_service.create_user(
@@ -39,7 +39,7 @@ def createUser(data: UserModel, db: Session = Depends(get_db)):
 
 
 @router.put("/users/{user_id}")
-@requirepermissions("edit_users")
+# @requirepermissions("edit_users")
 def updateUser(
     user_id: int,
     data: UserModel,

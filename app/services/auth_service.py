@@ -7,12 +7,10 @@ from fastapi import HTTPException, status
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-me")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
-)  # 24h
-
-# pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
+
+TOKEN_BLACKLIST = set()
 
 
 def hash_password(password: str) -> str:
@@ -34,6 +32,11 @@ def create_access_token(
 
 
 def decode_access_token(token: str) -> Dict[str, Any]:
+    if token in TOKEN_BLACKLIST:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+        )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload

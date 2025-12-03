@@ -1,4 +1,8 @@
+from sqlalchemy import case
+from sqlalchemy.orm import joinedload
 from app.schema.user_schema import User
+from app.schema.role_schema import Role
+from app.schema.departments_schema import Department
 from passlib.context import CryptContext
 from typing import Optional
 from sqlalchemy.exc import IntegrityError
@@ -116,12 +120,47 @@ def getUserByEmail(db, email: str):
     return db.query(User).filter(User.email == email, User.is_delete == 0).first()
 
 
+# def getUserById(db, id: int):
+#     return db.query(User).filter(User.id == id, User.is_delete == 0).first()
+
 def getUserById(db, id: int):
-    return db.query(User).filter(User.id == id, User.is_delete == 0).first()
+    return (
+        db.query(User)
+        .options(
+            joinedload(User.role).joinedload(Role.permissions)
+        )
+        .filter(User.id == id, User.is_delete == 0)
+        .first()
+    )
+
+# def getAllUser(db):
+#     return db.query(User).filter(User.is_delete == 0).all()
 
 
 def getAllUser(db):
-    return db.query(User).filter(User.is_delete == 0).all()
+    status_case = case(
+        (User.is_locked == 1, "Locked"),
+        (User.is_delete == 0, "Active"),
+        else_="Deleted",
+    )
+    rows = (
+        db.query(
+            User.id,
+            User.username,
+            User.email,
+            User.role_id,
+            User.department_id,
+            User.is_delete,
+            status_case.label("status"),
+            Role.name.label("role_name"),
+            Department.name.label("department_name"),
+        )
+        .join(Role, User.role_id == Role.id, isouter=True)
+        .join(Department, User.department_id == Department.id, isouter=True)
+        .filter(User.is_delete == 0)
+        .all()
+    )
+    return [dict(row._mapping) for row in rows]
 
 
 def has_permission(user, permission_name: str):
