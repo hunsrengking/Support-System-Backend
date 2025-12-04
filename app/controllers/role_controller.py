@@ -41,7 +41,7 @@ def getRole(role_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/role")
-@requirepermissions("create_roles")
+# @requirepermissions("create_roles")
 def createRole(date: RoleCreateReq, db: Session = Depends(get_db)):
     role = role_service.createRole(db, date.name, date.description)
     return {
@@ -52,14 +52,19 @@ def createRole(date: RoleCreateReq, db: Session = Depends(get_db)):
     }
 
 
+@router.delete("/role/{role_id}")
+# @requirepermissions("create_roles")
+def DisableRole(role_id: int, db: Session = Depends(get_db)):
+    role = role_service.disableRole(db, role_id)
+
+
 @router.put("/role/{role_id}/permissions")
-# @requirepermissions("edit_roles")
 def updatePermissions(role_id: int, date: RolePermsReq, db: Session = Depends(get_db)):
-    role = role_service.updateRolePermissions(db, role_id, date.permissions)
+    role = role_service.updateRolePermissionsById(db, role_id, date.permissions)
     return {
         "id": role.id,
         "name": role.name,
-        "permissions": [p.name for p in role.permissions],
+        "permissions": [{"id": p.id, "name": p.name} for p in role.permissions],
     }
 
 
