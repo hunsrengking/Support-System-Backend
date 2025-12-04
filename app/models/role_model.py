@@ -7,4 +7,4 @@ class RoleCreateReq(BaseModel):
 
 
 class RolePermsReq(BaseModel):
-    permissions: List[str]
+    permissions: List[int]

@@ -6,8 +6,9 @@ from app.config.db import Base, engine
 app = FastAPI(title="MyApi with Roles & Permissions")
 
 origin = [
-    "http://192.168.100.151:5173",
     "http://localhost:5173",
+    "http://192.168.100.151:5173",
+    
 ]
 
 app.add_middleware(

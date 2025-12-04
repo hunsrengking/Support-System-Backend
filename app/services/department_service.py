@@ -12,43 +12,47 @@ def getDepartmentById(db, department_id: int):
     return db.query(Department).filter(Department.id == department_id).first()
 
 
-def createDepartment(db, name: str):
-    name = name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Department name required")
-
-    existing = db.query(Department).filter(Department.username == name).first()
-    if existing:
-        raise HTTPException(
-            status_code=400, detail="Department with this name already exists"
-        )
-
-    department = Department(username=name)
+def createDepartment(db, name: str, status_id: int, description: str):
+    new_department = Department(
+        name=name,
+        status_id=status_id,
+        description=description,
+    )
     try:
-        db.add(department)
+        db.add(new_department)
         db.commit()
-        db.refresh(department)
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Could not create department")
-
-    return department
-
-
-def updateDepartment(db, department_id: int, name: Optional[str] = None):
-    department = db.query(Department).filter(Department.id == department_id).first()
-    if not department:
-        return None
-    if name:
-        department.username = name
-    try:
-        db.add(department)
-        db.commit()
-        db.refresh(department)
+        db.refresh(new_department)
+        return new_department
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Database integrity error.")
-    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail="Department with this name already exists."
+        )
+
+
+def updateDepartment(
+    db,
+    department_id: int,
+    name: str,
+    status_id: int,
+    description: str,
+):
+    department = getDepartmentById(db, department_id)
+    if not department:
+        raise HTTPException(
+            status_code=404, detail=f"Department with id={department_id} not found"
+        )
+
+    department.name = name
+    department.status_id = status_id
+    department.description = description
+
+    try:
+        db.commit()
+        db.refresh(department)
+        return department
+    except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    return department
+        raise HTTPException(
+            status_code=400, detail="Department with this name already exists."
+        )
