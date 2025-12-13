@@ -7,6 +7,6 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ticket_id = Column(Integer, ForeignKey("tickets.id"))
-    image_path = Column(String(255), nullable=False)
-    file_path = Column(String(255), nullable=False)
+    image_path = Column(String(255), nullable=True)
+    file_path = Column(String(255), nullable=True)
     description = Column(String(255), nullable=True)

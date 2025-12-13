@@ -17,6 +17,7 @@ from datetime import datetime
 from fastapi import HTTPException, status
 from typing import Optional
 from datetime import datetime
+from app.middlewares.auth_middlewares import get_current_user
 
 
 def getAllTicket(db: Session) -> List[Dict[str, Any]]:
@@ -134,14 +135,13 @@ def getTicketByStautus(db: Session):
     return [dict(row._mapping) for row in rows]
 
 
-def createTicket(db: Session, data: TicketCreateReq) -> Ticket:
+def createTicket(db: Session, data: TicketCreateReq, user_id: int):
     try:
         ticket = Ticket(
             title=data.title,
             description=data.description,
             status_id=STATUS_WAITING_APPROVE,
-            requester_id=data.requester_id,
-            assigned_by_id=data.assigned_by_id,
+            requester_id=user_id,
             priority_id=data.priority_id,
             category_id=data.category_id,
             assigned_to_id=data.assigned_to_id,
@@ -151,17 +151,27 @@ def createTicket(db: Session, data: TicketCreateReq) -> Ticket:
         )
 
         db.add(ticket)
-        db.flush()
+        db.flush()  # get ticket.id
+
+        image_path = None
+        file_path = None
+        description = None
 
         if data.items:
             for item in data.items:
-                db_item = Item(
-                    ticket_id=ticket.id,
-                    image_path=item.image_path,
-                    file_path=item.file_path,
-                    description=item.description,
-                )
-                db.add(db_item)
+                if item.image_path:
+                    image_path = item.image_path
+                if item.file_path:
+                    file_path = item.file_path
+                if item.description:
+                    description = item.description
+            db_item = Item(
+                ticket_id=ticket.id,
+                image_path=image_path,
+                file_path=file_path,
+                description=description or "Attachments",
+            )
+            db.add(db_item)
 
         db.commit()
         db.refresh(ticket)
@@ -170,9 +180,10 @@ def createTicket(db: Session, data: TicketCreateReq) -> Ticket:
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Error while creating ticket: {str(e)}",
         )
+
 
 def ApproveTicket(id: int, db: Session, user_id: int):
     ticket = db.query(Ticket).filter(Ticket.id == id).first()
@@ -180,12 +191,12 @@ def ApproveTicket(id: int, db: Session, user_id: int):
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    if ticket.status_id != STATUS_WAITING_APPROVE: # type: ignore
+    if ticket.status_id != STATUS_WAITING_APPROVE:  # type: ignore
         raise HTTPException(status_code=400, detail="Ticket not waiting approval")
 
-    ticket.status_id = STATUS_OPEN # type: ignore
-    ticket.approved_by_id = user_id # type: ignore
-    ticket.approved_date = datetime.now() # type: ignore
+    ticket.status_id = STATUS_OPEN  # type: ignore
+    ticket.approved_by_id = user_id  # type: ignore
+    ticket.approved_date = datetime.now()  # type: ignore
 
     db.commit()
     db.refresh(ticket)

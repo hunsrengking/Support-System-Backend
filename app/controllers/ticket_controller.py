@@ -37,12 +37,13 @@ def getTicketByStatus(db: Session = Depends(get_db)):
     return ticket_service.getTicketByStautus(db)
 
 
-@router.post(
-    "/ticket",
-    response_model=TicketResp,
-)
-def CreateTicket(data: TicketCreateReq, db: Session = Depends(get_db)):
-    return ticket_service.createTicket(db, data)
+@router.post("/ticket", response_model=TicketResp)
+def CreateTicket(
+    data: TicketCreateReq,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return ticket_service.createTicket(db=db, data=data, user_id=current_user.id) # type: ignore
 
 
 @router.patch("/ticket/{id}/approve")
@@ -51,4 +52,4 @@ def ApproveTicket(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return ticket_service.ApproveTicket(id=id, db=db, user_id=current_user.id) # type: ignore
+    return ticket_service.ApproveTicket(id=id, db=db, user_id=current_user.id)  # type: ignore
