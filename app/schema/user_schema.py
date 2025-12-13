@@ -11,10 +11,11 @@ class User(Base):
     username = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    is_locked = Column(Integer, default=0)
+    is_locked = Column(Integer, nullable=False, default=0)
     create_date = Column(DateTime, nullable=False, default=datetime.utcnow)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    failed_attempts = Column(Integer, default=0)
 
     # Relationships
     role = relationship("Role")

@@ -35,7 +35,6 @@ class TicketCreateReq(BaseModel):
 
 
 class TicketUpdateReq(BaseModel):
-    title: Optional[str] = None
     description: Optional[str] = None
     status_id: Optional[int] = None
     priority_id: Optional[int] = None

@@ -66,6 +66,60 @@ def decode_access_token(token: str) -> Dict[str, Any]:
 # -------------------------
 # AUTH BUSINESS LOGIC
 # -------------------------
+# def LoginService(db: Session, email: str, password: str) -> Dict[str, Any]:
+#     user = user_service.getUserByEmail(db, email)
+
+#     if not user or not getattr(user, "password", None):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Invalid credentials",
+#         )
+
+#     if not verify_password(password, user.password): # type: ignore
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Invalid credentials",
+#         )
+
+#     role_data = None
+#     permissions_list = []
+
+#     if user.role:
+#         role_data = {
+#             "id": user.role.id,
+#             "name": user.role.name,
+#         }
+
+#         permissions_list = [
+#             {"id": p.id, "name": p.name}
+#             for p in (user.role.permissions or [])
+#         ]
+
+#     token_payload = {
+#         "sub": str(user.id),
+#         "email": user.email,
+#         "name": user.username,
+#         "role_id": user.role_id,
+#         "role": role_data,
+#         "permissions": permissions_list,
+#     }
+
+#     access_token = create_access_token(token_payload)
+
+#     return {
+#         "access_token": access_token,
+#         "token_type": "bearer",
+#         "user": {
+#             "id": user.id,
+#             "email": user.email,
+#             "username": user.username,
+#             "role_id": user.role_id,
+#             "role": role_data,
+#             "permissions": permissions_list,
+#         },
+#     }
+
+
 def LoginService(db: Session, email: str, password: str) -> Dict[str, Any]:
     user = user_service.getUserByEmail(db, email)
 
@@ -75,11 +129,32 @@ def LoginService(db: Session, email: str, password: str) -> Dict[str, Any]:
             detail="Invalid credentials",
         )
 
-    if not verify_password(password, user.password): # type: ignore
+    # 🔒 Check lock
+    if getattr(user, "is_locked", 0) == 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is locked, please contact administrator",
+        )
+
+    if not verify_password(password, user.password):  # type: ignore
+        user.failed_attempts = (user.failed_attempts or 0) + 1 # type: ignore
+
+        if user.failed_attempts >= 3: # pyright: ignore[reportGeneralTypeIssues]
+            user.is_locked = 1 # type: ignore
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is locked, please contact administrator",
+            )
+
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+
+    user.failed_attempts = 0 # type: ignore
+    db.commit()
 
     role_data = None
     permissions_list = []
@@ -91,8 +166,7 @@ def LoginService(db: Session, email: str, password: str) -> Dict[str, Any]:
         }
 
         permissions_list = [
-            {"id": p.id, "name": p.name}
-            for p in (user.role.permissions or [])
+            {"id": p.id, "name": p.name} for p in (user.role.permissions or [])
         ]
 
     token_payload = {

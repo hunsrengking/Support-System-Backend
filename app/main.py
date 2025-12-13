@@ -1,19 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import user_routes, auth_routes, role_route, ticket_route,department_route,status_route
+from app.routes import (
+    user_routes,
+    auth_routes,
+    role_route,
+    ticket_route,
+    department_route,
+    status_route,
+    telegram_route,
+    notifications_route
+)
 from app.config.db import Base, engine
-
+from dotenv import load_dotenv
 from typing import Dict, Any
 from fastapi import Depends
 from app.middlewares.auth_middlewares import get_current_user
-
-
+load_dotenv()
 app = FastAPI(title="MyApi with Roles & Permissions")
 
 origin = [
     "http://localhost:5173",
     "http://192.168.100.151:5173",
-    
 ]
 
 app.add_middleware(
@@ -30,7 +37,8 @@ app.include_router(role_route.router)
 app.include_router(ticket_route.router)
 app.include_router(department_route.router)
 app.include_router(status_route.router)
-
+app.include_router(telegram_route.router)
+app.include_router(notifications_route.router)
 
 @app.on_event("startup")
 def on_startup():
@@ -43,6 +51,8 @@ def on_startup():
     import app.schema.priority_schema
     import app.schema.ticket_schema
     import app.schema.item_schema
+    import app.schema.telegram_schema
+    import app.schema.notification_schema
 
     print("Registered tables before create_all():", list(Base.metadata.tables.keys()))
 
@@ -54,6 +64,7 @@ def on_startup():
 @app.get("/")
 def root():
     return {"message": "API running"}
+
 
 @app.get("/me")
 def whoami(current_user: Dict[str, Any] = Depends(get_current_user)):

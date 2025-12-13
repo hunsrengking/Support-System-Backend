@@ -17,3 +17,7 @@ def getAllCategory(db: Session) -> List[Category]:
 
 def getAllPriority(db: Session) -> List[Priority]:
     return db.query(Priority).all()
+
+
+def getPriorityById(db: Session, priority_id: int):
+    return db.query(Priority).filter(Priority.id == priority_id).first()

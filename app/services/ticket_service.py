@@ -3,21 +3,31 @@ from collections import defaultdict
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from app.schema.ticket_schema import Ticket
 from app.schema.item_schema import Item
 from app.schema.status_schema import Status
 from app.schema.user_schema import User
-from app.models.ticket_model import TicketCreateReq
+from app.models.ticket_model import TicketCreateReq, TicketUpdateReq
 from app.schema.priority_schema import Priority
 from app.schema.category_schema import Category
 from app.schema.item_schema import Item
 from app.constants.status_constants import *
+from app.config.iconfig import FRONTEND_URL
 from datetime import datetime
 from fastapi import HTTPException, status
 from typing import Optional
 from datetime import datetime
+from app.services.user_service import getUserById
+from app.services.department_service import getDepartmentById
+from app.services.status_service import getPriorityById
 from app.middlewares.auth_middlewares import get_current_user
+from app.services.telegram_service import (
+    getActiveTelegramConfig,
+    SendTelegramMessageAsync,
+)
+from app.services.notification_service import createNotification
+from app.models.notification_model import NotificationCreate
 
 
 def getAllTicket(db: Session) -> List[Dict[str, Any]]:
@@ -76,14 +86,14 @@ def getTicketById(db: Session, ticket_id: int):
     row = (
         db.query(
             Ticket.id.label("id"),
-            Ticket.title.label("title"),
+            Ticket.title.label("subject"),
             Ticket.description.label("description"),
             Ticket.status_id.label("status_id"),
-            Status.name.label("status_name"),
+            Status.name.label("status"),
             Ticket.priority_id.label("priority_id"),
-            Priority.name.label("priority_name"),
+            Priority.name.label("priority"),
             Ticket.category_id.label("category_id"),
-            Category.name.label("category_name"),
+            Category.name.label("category"),
             Ticket.assigned_to_id.label("assigned_to_id"),
             UserAssigned.username.label("assigned_to"),
             Ticket.requester_id.label("requester_id"),
@@ -91,7 +101,7 @@ def getTicketById(db: Session, ticket_id: int):
             Ticket.assigned_to_department_id.label("assigned_to_department_id"),
             Ticket.start_date.label("start_date"),
             Ticket.end_date.label("end_date"),
-            Ticket.create_date.label("create_date"),
+            Ticket.create_date.label("created_at"),
             Ticket.approved_date.label("approved_date"),
             Ticket.approved_by_id.label("approved_by_id"),
         )
@@ -131,11 +141,36 @@ def getTicketById(db: Session, ticket_id: int):
 
 
 def getTicketByStautus(db: Session):
-    rows = db.query(Ticket.id, Ticket.title).filter(Ticket.status_id == 8).all()
+    UserRequester = aliased(User)
+    UserAssigned = aliased(User)
+    rows = (
+        db.query(
+            Ticket.id,
+            Ticket.title,
+            UserAssigned.username.label("assigned_to"),
+            UserRequester.username.label("created_by"),
+            Status.name.label("status"),
+            Category.name.label("category"),
+            Priority.name.label("priority"),
+            Ticket.create_date.label("created_at"),
+        )
+        .join(UserRequester, Ticket.requester_id == UserRequester.id, isouter=True)
+        .join(UserAssigned, Ticket.assigned_to_id == UserAssigned.id, isouter=True)
+        .join(Status, Ticket.status_id == Status.id, isouter=True)
+        .join(Priority, Ticket.priority_id == Priority.id, isouter=True)
+        .join(Category, Ticket.category_id == Category.id, isouter=True)
+        .filter(Ticket.status_id == 8)
+        .all()
+    )
     return [dict(row._mapping) for row in rows]
 
 
-def createTicket(db: Session, data: TicketCreateReq, user_id: int):
+def createTicket(
+    db: Session,
+    data: TicketCreateReq,
+    user_id: int,
+    background_tasks: BackgroundTasks | None = None,
+):
     try:
         ticket = Ticket(
             title=data.title,
@@ -151,7 +186,7 @@ def createTicket(db: Session, data: TicketCreateReq, user_id: int):
         )
 
         db.add(ticket)
-        db.flush()  # get ticket.id
+        db.flush()
 
         image_path = None
         file_path = None
@@ -175,6 +210,57 @@ def createTicket(db: Session, data: TicketCreateReq, user_id: int):
 
         db.commit()
         db.refresh(ticket)
+        # ================= NOTIFICATION =================
+        notify_user_id = (
+            ticket.assigned_to_id
+            if ticket.assigned_to_id  # type: ignore
+            else ticket.requester_id
+        )
+
+        createNotification(
+            db,
+            NotificationCreate(
+                user_id=notify_user_id,  # type: ignore
+                title="New Ticket Created",
+                message=f"Ticket #{ticket.id} - {ticket.title}",
+                link=f"/ticket/views/{ticket.id}",
+                type="ticket",
+            ),
+        )
+
+        # ================= TELEGRAM =================
+        config = getActiveTelegramConfig(db)
+        if config:
+            requester = getUserById(db, user_id)
+            priority = getPriorityById(db, ticket.priority_id)  # type: ignore
+            department = getDepartmentById(db, ticket.assigned_to_department_id)  # type: ignore
+            department_name = department["name"] if department else "Not yet assigned"
+            priority_name = priority.name if priority else "Not yet assigned"
+            deadline = (
+                ticket.end_date.strftime("%d %b %Y")
+                if ticket.end_date  # type: ignore
+                else "Not yet assigned"
+            )
+            ticket_url = f"{FRONTEND_URL}/ticket/views/{ticket.id}"
+            message = (
+                f"<b>| New ticket:</b> #{ticket.id}\n"
+                f"<b>| Subject:</b> {ticket.title}\n"
+                f"<b>| Customer Name:</b> {requester.username}\n\n"  # type: ignore
+                f"📣 <b>Hello team,</b> we have created a new ticket and assigned it to the "
+                f"<b>{department_name}</b> department. Please check and respond.\n"
+                "==============================\n"
+                f"🟠 <b>Priority:</b> {priority_name}\n"
+                f"⏱ <b>Dateline:</b> {deadline}\n"
+                "==============================\n\n"
+                f'🔗 <a href="{ticket_url}">View Ticket</a>'
+            )
+
+            background_tasks.add_task(  # type: ignore
+                SendTelegramMessageAsync,  # type: ignore
+                config.bot_token,  # type: ignore
+                config.chat_id,  # type: ignore
+                message,
+            )
         return ticket
 
     except SQLAlchemyError as e:
@@ -182,6 +268,38 @@ def createTicket(db: Session, data: TicketCreateReq, user_id: int):
         raise HTTPException(
             status_code=500,
             detail=f"Error while creating ticket: {str(e)}",
+        )
+
+
+def UpdateTicket(db: Session, ticket_id: int, data: TicketUpdateReq, user_id: int):
+    try:
+        ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+
+        if not ticket:
+            raise HTTPException(
+                status_code=404,
+                detail="Ticket not found",
+            )
+
+        ticket.description = data.description  # type: ignore
+        ticket.status_id = data.status_id  # type: ignore
+        ticket.priority_id = data.priority_id  # type: ignore
+        ticket.category_id = data.category_id  # type: ignore
+        ticket.assigned_to_id = data.assigned_to_id  # type: ignore
+        ticket.assigned_to_department_id = data.assigned_to_department_id  # type: ignore
+        ticket.start_date = data.start_date  # type: ignore
+        ticket.end_date = data.end_date  # type: ignore
+        ticket.assigned_by_id = user_id  # type: ignore
+
+        db.commit()
+        db.refresh(ticket)
+        return ticket
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error while updating ticket: {str(e)}",
         )
 
 
@@ -202,3 +320,41 @@ def ApproveTicket(id: int, db: Session, user_id: int):
     db.refresh(ticket)
 
     return {"message": "Ticket approved successfully", "ticket_id": id}
+
+
+def RejectTicket(id: int, db: Session, user_id: int):
+    ticket = db.query(Ticket).filter(Ticket.id == id).first()
+
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if ticket.status_id != STATUS_WAITING_APPROVE:  # type: ignore
+        raise HTTPException(status_code=400, detail="Ticket not waiting approval")
+
+    ticket.status_id = STATUS_REJECT  # type: ignore
+    ticket.approved_by_id = user_id  # type: ignore
+    ticket.approved_date = datetime.now()  # type: ignore
+
+    db.commit()
+    db.refresh(ticket)
+
+    return {"message": "Ticket reject successfully", "ticket_id": id}
+
+
+def DeleteTicket(id: int, db: Session, user_id: int):
+    ticket = db.query(Ticket).filter(Ticket.id == id).first()
+
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if ticket.status_id != STATUS_WAITING_APPROVE:  # type: ignore
+        raise HTTPException(status_code=400, detail="Ticket not waiting approval")
+
+    ticket.status_id = STATUS_DELETE  # type: ignore
+    ticket.approved_by_id = user_id  # type: ignore
+    ticket.approved_date = datetime.now()  # type: ignore
+
+    db.commit()
+    db.refresh(ticket)
+
+    return {"message": "Ticket delete successfully", "ticket_id": id}

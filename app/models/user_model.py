@@ -7,6 +7,8 @@ class UserModel(BaseModel):
     password: str
     role_id: int
     department_id: int
+    is_locked : int
+    failed_attempts: int
 
 
 class ChangePasswordModel(BaseModel):
