@@ -1,8 +1,11 @@
 from typing import List
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from app.schema.role_schema import Role
+from app.schema.role_schema import Role, role_permissions
+from app.schema.user_schema import User
 from app.schema.permission_schema import Permission
+from fastapi import HTTPException, status
+from sqlalchemy import exists
 
 
 def getAllRole(db: Session) -> List[Role]:
@@ -44,12 +47,30 @@ def createRole(db: Session, name: str, description: str | None = None) -> Role:
 
 def disableRole(db: Session, role_id: int) -> None:
     try:
-        result = db.query(Role).filter(Role.id == role_id).update({"is_active": 0})
-        if result == 0:
+        # Check if role exists and is active
+        role = db.query(Role).filter(Role.id == role_id, Role.is_active == 1).first()
+
+        if not role:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Role not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Role not found or already disabled",
             )
+
+        # Check if role has active users
+        has_active_users = db.query(
+            exists().where(User.role_id == role_id, User.is_active == 1)
+        ).scalar()
+
+        if has_active_users:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot disable role with active users",
+            )
+
+        # Disable role
+        role.is_active = 0  # type: ignore
         db.commit()
+
     except HTTPException:
         raise
     except Exception:
@@ -62,6 +83,29 @@ def disableRole(db: Session, role_id: int) -> None:
 
 def getAllPermissions(db: Session) -> List[Permission]:
     return db.query(Permission).all()
+
+
+def getPermissionByRoleId(db: Session, role_id: int) -> List[str]:
+    rows = (
+        db.query(Permission.name)
+        .join(role_permissions, Permission.id == role_permissions.c.permission_id)
+        .filter(role_permissions.c.role_id == role_id)
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def getPermissionByUserId(db: Session, user_id: int) -> List[str]:
+    rows = (
+        db.query(Permission.name)
+        .join(role_permissions, Permission.id == role_permissions.c.permission_id)
+        .join(Role, Role.id == role_permissions.c.role_id)
+        .join(User, User.role_id == Role.id)
+        .filter(User.id == user_id, User.is_delete == 0)
+        .distinct()
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 def updateRolePermissionsById(

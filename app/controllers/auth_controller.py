@@ -37,7 +37,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         )
     # 3) Verify password
     if not pwd_context.verify(payload.password, stored_hash):
-        raise HTTPException(
+        return HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
