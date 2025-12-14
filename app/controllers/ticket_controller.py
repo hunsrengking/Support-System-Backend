@@ -53,7 +53,7 @@ def CreateTicket(
     )  # type: ignore
 
 
-@router.put("/ticket/{ticket_id}")
+@router.patch("/ticket/{ticket_id}", response_model=TicketResp)
 def UpdateTicket(
     ticket_id: int,
     data: TicketUpdateReq,

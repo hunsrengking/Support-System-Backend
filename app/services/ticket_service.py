@@ -276,20 +276,15 @@ def UpdateTicket(db: Session, ticket_id: int, data: TicketUpdateReq, user_id: in
         ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
 
         if not ticket:
-            raise HTTPException(
-                status_code=404,
-                detail="Ticket not found",
-            )
+            raise HTTPException(status_code=404, detail="Ticket not found")
 
-        ticket.description = data.description  # type: ignore
-        ticket.status_id = data.status_id  # type: ignore
-        ticket.priority_id = data.priority_id  # type: ignore
-        ticket.category_id = data.category_id  # type: ignore
-        ticket.assigned_to_id = data.assigned_to_id  # type: ignore
-        ticket.assigned_to_department_id = data.assigned_to_department_id  # type: ignore
-        ticket.start_date = data.start_date  # type: ignore
-        ticket.end_date = data.end_date  # type: ignore
-        ticket.assigned_by_id = user_id  # type: ignore
+        update_data = data.dict(exclude_unset=True)
+
+        for field, value in update_data.items():
+            setattr(ticket, field, value)
+
+        ticket.assigned_by_id = user_id  # type: ignore # keep audit info
+        ticket.upda
 
         db.commit()
         db.refresh(ticket)

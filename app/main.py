@@ -8,7 +8,8 @@ from app.routes import (
     department_route,
     status_route,
     telegram_route,
-    notifications_route
+    notifications_route,
+    dashboard_route
 )
 from app.config.db import Base, engine
 from dotenv import load_dotenv
@@ -39,6 +40,7 @@ app.include_router(department_route.router)
 app.include_router(status_route.router)
 app.include_router(telegram_route.router)
 app.include_router(notifications_route.router)
+app.include_router(dashboard_route.router)
 
 @app.on_event("startup")
 def on_startup():
@@ -53,6 +55,7 @@ def on_startup():
     import app.schema.item_schema
     import app.schema.telegram_schema
     import app.schema.notification_schema
+    import app.schema.position_schema
 
     print("Registered tables before create_all():", list(Base.metadata.tables.keys()))
 
