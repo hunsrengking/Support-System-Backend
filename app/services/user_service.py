@@ -133,9 +133,6 @@ def getUserById(db, id: int):
         .first()
     )
 
-# def getAllUser(db):
-#     return db.query(User).filter(User.is_delete == 0).all()
-
 
 def getAllUser(db):
     status_case = case(

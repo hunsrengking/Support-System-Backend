@@ -35,7 +35,7 @@ def getRole(role_id: int, db: Session = Depends(get_db)):
         "name": role.name,
         "description": getattr(role, "description", None),
         "permissions": [
-            {"id": p.id, "name": p.name} for p in getattr(role, "permissions", [])
+            {"id": p.id, "name": p.name, "group" : p.group} for p in getattr(role, "permissions", [])
         ],
     }
 
@@ -76,6 +76,7 @@ def listPermissions(db: Session = Depends(get_db)):
         {
             "id": p.id,
             "name": p.name,
+            "group" : p.group,
         }
         for p in permissions
     ]

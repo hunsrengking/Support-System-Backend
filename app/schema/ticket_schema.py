@@ -11,7 +11,7 @@ class Ticket(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(150), nullable=False)
     description = Column(String(500), nullable=True)
-    status_id = Column(Integer, ForeignKey("status.id"), nullable=False)
+    status_id = Column(Integer, ForeignKey("status.id"), nullable=False, default=10)
     priority_id = Column(Integer, ForeignKey("priorities.id"))
     category_id = Column(Integer, ForeignKey("categories.id"))
     assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)

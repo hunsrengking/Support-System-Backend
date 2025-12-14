@@ -6,3 +6,4 @@ python-dotenv
 passlib[bcrypt]
 argon2-cffi
 PyJWT
+requests

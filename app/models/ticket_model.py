@@ -25,9 +25,6 @@ class ItemResp(BaseModel):
 class TicketCreateReq(BaseModel):
     title: str
     description: Optional[str] = None
-    status_id: int
-    requester_id: int
-    assigned_by_id: int
     priority_id: Optional[int] = None
     category_id: Optional[int] = None
     assigned_to_id: Optional[int] = None
@@ -38,7 +35,6 @@ class TicketCreateReq(BaseModel):
 
 
 class TicketUpdateReq(BaseModel):
-    title: Optional[str] = None
     description: Optional[str] = None
     status_id: Optional[int] = None
     priority_id: Optional[int] = None
@@ -57,23 +53,16 @@ class TicketResp(BaseModel):
     id: int
     title: str
     description: Optional[str]
-
     status_id: int
     status_name: Optional[str] = None
-
     priority_id: Optional[int] = None
     priority_name: Optional[str] = None
-
     category_id: Optional[int] = None
     category_name: Optional[str] = None
-
     assigned_to_id: Optional[int] = None
     assigned_to_name: Optional[str] = None
-
     assigned_to_department_id: Optional[int] = None
-
-    requester_id: int
-    assigned_by_id: int
+    assigned_by_id: Optional[int] = None
     approved_by_id: Optional[int] = None
 
     start_date: Optional[datetime] = None
@@ -85,3 +74,7 @@ class TicketResp(BaseModel):
 
     class Config:
         orm_mode = True
+
+class ApproveReq(BaseModel):
+        approver_id: Optional[int] = None
+        approved_date: Optional[datetime] = None
