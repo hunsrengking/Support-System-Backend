@@ -57,6 +57,7 @@ def CreateTicket(
 def UpdateTicket(
     ticket_id: int,
     data: TicketUpdateReq,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -65,6 +66,7 @@ def UpdateTicket(
         ticket_id=ticket_id,
         data=data,
         user_id=current_user.id,  # type: ignore
+        background_tasks=background_tasks,
     )
 
 

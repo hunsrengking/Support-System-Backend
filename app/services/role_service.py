@@ -87,7 +87,7 @@ def getAllPermissions(db: Session) -> List[Permission]:
 
 def getPermissionByRoleId(db: Session, role_id: int) -> List[str]:
     rows = (
-        db.query(Permission.name)
+        db.query(Permission.name, Permission.group)
         .join(role_permissions, Permission.id == role_permissions.c.permission_id)
         .filter(role_permissions.c.role_id == role_id)
         .all()

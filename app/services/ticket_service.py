@@ -271,7 +271,13 @@ def createTicket(
         )
 
 
-def UpdateTicket(db: Session, ticket_id: int, data: TicketUpdateReq, user_id: int):
+def UpdateTicket(
+    db: Session,
+    ticket_id: int,
+    data: TicketUpdateReq,
+    user_id: int,
+    background_tasks: BackgroundTasks | None = None,
+):
     try:
         ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
 
@@ -283,11 +289,66 @@ def UpdateTicket(db: Session, ticket_id: int, data: TicketUpdateReq, user_id: in
         for field, value in update_data.items():
             setattr(ticket, field, value)
 
-        ticket.assigned_by_id = user_id  # type: ignore # keep audit info
-        ticket.upda
+        ticket.assigned_by_id = user_id  # type: ignore # audit
 
         db.commit()
         db.refresh(ticket)
+
+        # ================= NOTIFICATION =================
+        notify_user_id = (
+            ticket.assigned_to_id if ticket.assigned_to_id else ticket.requester_id  # type: ignore
+        )
+
+        createNotification(
+            db,
+            NotificationCreate(
+                user_id=notify_user_id,  # type: ignore
+                title="Ticket Updated",
+                message=f"Ticket #{ticket.id} has been updated",
+                link=f"/ticket/views/{ticket.id}",
+                type="ticket",
+            ),
+        )
+
+        # ================= TELEGRAM =================
+        config = getActiveTelegramConfig(db)
+        if config and background_tasks:
+            updater = getUserById(db, user_id)
+            priority = getPriorityById(db, ticket.priority_id)  # type: ignore
+            assigned_user = getUserById(db, ticket.assigned_to_id) if ticket.assigned_to_id else None  # type: ignore
+            assigned_username = (
+                assigned_user.username if assigned_user else "Not assigned"
+            )
+            priority_name = priority.name if priority else "Not assigned"
+            deadline = (
+                ticket.end_date.strftime("%d %b %Y")
+                if ticket.end_date  # type: ignore
+                else "Not assigned"
+            )
+
+            ticket_url = f"{FRONTEND_URL}/ticket/views/{ticket.id}"
+
+            message = (
+                f"<b>✏️ Ticket Updated</b>  #{ticket.id}\n"
+                f"<b>📌 Subject:</b> {ticket.title}\n"
+                f"<b>👤 Updated by:</b> {updater.username}\n\n"  # type: ignore
+                "📣 <b>Hello team,</b>\n"
+                "The following ticket has been updated. Please review the latest details below:\n"
+                "==============================\n"
+                f"🟠 <b>Priority:</b> {priority_name}\n"
+                f"👤 <b>Assigned To:</b> {assigned_username}\n"
+                f"⏱ <b>Deadline:</b> {deadline}\n"
+                "==============================\n\n"
+                f'🔗 <a href="{ticket_url}">View Ticket</a>'
+            )
+
+            background_tasks.add_task(
+                SendTelegramMessageAsync,
+                config.bot_token,  # type: ignore
+                config.chat_id,  # type: ignore
+                message,
+            )
+
         return ticket
 
     except SQLAlchemyError as e:
@@ -332,7 +393,6 @@ def RejectTicket(id: int, db: Session, user_id: int):
 
     db.commit()
     db.refresh(ticket)
-
     return {"message": "Ticket reject successfully", "ticket_id": id}
 
 
@@ -351,5 +411,4 @@ def DeleteTicket(id: int, db: Session, user_id: int):
 
     db.commit()
     db.refresh(ticket)
-
     return {"message": "Ticket delete successfully", "ticket_id": id}
