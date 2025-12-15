@@ -56,6 +56,7 @@ def on_startup():
     import app.schema.telegram_schema
     import app.schema.notification_schema
     import app.schema.position_schema
+    import app.schema.staff_schema
 
     print("Registered tables before create_all():", list(Base.metadata.tables.keys()))
 
