@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import (
     user_routes,
@@ -11,13 +12,14 @@ from app.routes import (
     notifications_route,
     dashboard_route,
     positions_route,
-    staff_route
+    staff_route,
 )
 from app.config.db import Base, engine
 from dotenv import load_dotenv
 from typing import Dict, Any
 from fastapi import Depends
 from app.middlewares.auth_middlewares import get_current_user
+
 load_dotenv()
 app = FastAPI(title="MyApi with Roles & Permissions")
 
@@ -45,6 +47,14 @@ app.include_router(notifications_route.router)
 app.include_router(dashboard_route.router)
 app.include_router(positions_route.router)
 app.include_router(staff_route.router)
+
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="app/uploads"),
+    name="uploads",
+)
+
 
 @app.on_event("startup")
 def on_startup():
