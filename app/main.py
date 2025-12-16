@@ -9,7 +9,9 @@ from app.routes import (
     status_route,
     telegram_route,
     notifications_route,
-    dashboard_route
+    dashboard_route,
+    positions_route,
+    staff_route
 )
 from app.config.db import Base, engine
 from dotenv import load_dotenv
@@ -41,6 +43,8 @@ app.include_router(status_route.router)
 app.include_router(telegram_route.router)
 app.include_router(notifications_route.router)
 app.include_router(dashboard_route.router)
+app.include_router(positions_route.router)
+app.include_router(staff_route.router)
 
 @app.on_event("startup")
 def on_startup():

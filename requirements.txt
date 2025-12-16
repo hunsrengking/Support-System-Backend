@@ -7,3 +7,4 @@ passlib[bcrypt]
 argon2-cffi
 PyJWT
 requests
+sendgrid

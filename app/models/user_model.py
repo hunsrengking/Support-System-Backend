@@ -9,7 +9,7 @@ class UserModel(BaseModel):
     department_id: int
     is_locked: int = 0
     failed_attempts: int = 0
-
+    staff_id : int
 
 class ChangePasswordModel(BaseModel):
     old_password: str

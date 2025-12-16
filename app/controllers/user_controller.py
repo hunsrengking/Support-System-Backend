@@ -34,6 +34,7 @@ def createUser(data: UserModel, db: Session = Depends(get_db)):
             data.password,
             data.role_id,
             data.department_id,
+            data.staff_id,
         ),
     )
 
@@ -53,6 +54,7 @@ def updateUser(
         password=data.password,
         role_id=data.role_id,
         department_id=data.department_id,
+        staff_id=data.staff_id,
     )
     if not updated_user:
         raise HTTPException(status_code=404, detail=f"User with id={user_id} not found")
@@ -68,19 +70,26 @@ def deleteUser(user_id: int, db: Session = Depends(get_db)):
     return {"message": f"User with id={user_id} has been deleted"}
 
 
-@router.post("/users/{user_id}/changepassword")
+@router.patch("/users/{user_id}/change-password")
 # @requirepermissions("change_user_password")
+def adminChangeUserPassword(
+    user_id: int,
+    data: dict,
+    db: Session = Depends(get_db),
+):
+    password = data.get("password")
+    return user_service.admin_change_password(db, user_id, password)  # type: ignore
+
+
+@router.post("/users/{user_id}/changepassword")
 def changeUserPassword(
     user_id: int,
     data: ChangePasswordModel,
     db: Session = Depends(get_db),
 ):
-    updated_user = user_service.change_password(
+    return user_service.change_password(
         db,
         user_id,
         data.old_password,
         data.new_password,
     )
-    if not updated_user:
-        raise HTTPException(status_code=404, detail=f"User with id={user_id} not found")
-    return updated_user

@@ -15,11 +15,13 @@ class User(Base):
     create_date = Column(DateTime, nullable=False, default=datetime.utcnow)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    staff_id = Column(Integer, ForeignKey("staff.id"), nullable=False)
     failed_attempts = Column(Integer, default=0)
 
     # Relationships
     role = relationship("Role")
     department = relationship("Department", back_populates="users")
+    staff = relationship("Staff", back_populates="users")
     tickets_assigned = relationship(
         "Ticket", back_populates="assigned_to", foreign_keys="[Ticket.assigned_to_id]"
     )
