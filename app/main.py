@@ -13,6 +13,7 @@ from app.routes import (
     dashboard_route,
     positions_route,
     staff_route,
+    report_route
 )
 from app.config.db import Base, engine
 from dotenv import load_dotenv
@@ -26,6 +27,7 @@ app = FastAPI(title="MyApi with Roles & Permissions")
 origin = [
     "http://localhost:5173",
     "http://192.168.100.151:5173",
+    "https://wupai.smartdigitalhr.com",
 ]
 
 app.add_middleware(
@@ -47,7 +49,7 @@ app.include_router(notifications_route.router)
 app.include_router(dashboard_route.router)
 app.include_router(positions_route.router)
 app.include_router(staff_route.router)
-
+app.include_router(report_route.router)
 
 app.mount(
     "/uploads",
