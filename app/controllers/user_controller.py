@@ -93,3 +93,8 @@ def changeUserPassword(
         data.old_password,
         data.new_password,
     )
+
+
+@router.get("/users/without/departmemt")
+def get_users_without_department(db: Session = Depends(get_db)):
+    return user_service.getUsersWithoutDepartment(db)

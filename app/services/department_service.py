@@ -105,3 +105,58 @@ def DisableDepartment(db: Session, department_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
     return department
+
+
+def addMemberToDepartment(db: Session, department_id: int, user_id: int):
+    department = (
+        db.query(Department)
+        .filter(Department.id == department_id, Department.status_id == 1)
+        .first()
+    )
+
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    user = db.query(User).filter(User.id == user_id, User.is_delete == 0).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.department_id == department_id: # type: ignore
+        raise HTTPException(status_code=400, detail="User already in this department")
+
+    user.department_id = department_id # type: ignore
+
+    try:
+        db.commit()
+        db.refresh(user)
+        return {"message": "Member added successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================================
+# REMOVE MEMBER
+# ==================================
+def removeMemberFromDepartment(db: Session, department_id: int, user_id: int):
+    user = (
+        db.query(User)
+        .filter(
+            User.id == user_id, User.department_id == department_id, User.is_delete == 0
+        )
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found in this department")
+
+    user.department_id = None # type: ignore
+
+    try:
+        db.commit()
+        db.refresh(user)
+        return {"message": "Member removed successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

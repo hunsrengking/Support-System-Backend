@@ -24,15 +24,16 @@ from app.middlewares.auth_middlewares import get_current_user
 load_dotenv()
 app = FastAPI(title="MyApi with Roles & Permissions")
 
-origin = [
-    "http://localhost:5173",
-    "http://192.168.100.151:5173",
-    "https://wupai.smartdigitalhr.com",
-]
+# origin = [
+#     "http://localhost:5173",
+#     "http://192.168.100.151:5173",
+#     "https://wupai.smartdigitalhr.com",
+# ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origin,
+    # allow_origins=origin,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,3 +90,7 @@ def root():
 @app.get("/me")
 def whoami(current_user: Dict[str, Any] = Depends(get_current_user)):
     return {"user": current_user}
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}

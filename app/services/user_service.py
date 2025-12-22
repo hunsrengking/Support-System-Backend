@@ -4,11 +4,12 @@ from app.schema.user_schema import User
 from app.schema.role_schema import Role
 from app.schema.departments_schema import Department
 from app.schema.staff_schema import Staff
+from app.schema.ticket_schema import Ticket
 from passlib.context import CryptContext
 from typing import Optional
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
-
+from sqlalchemy.orm import Session
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 
@@ -22,14 +23,29 @@ def create_user(
     staff_id: int,
 ):
     try:
+        # Check email
         if db.query(User).filter(User.email == email, User.is_delete == 0).first():
             raise HTTPException(status_code=400, detail="Email already exists.")
+
+        # Check username
         elif (
             db.query(User)
             .filter(User.username == username, User.is_delete == 0)
             .first()
         ):
             raise HTTPException(status_code=400, detail="Username already exists.")
+
+        # ✅ Check staff already linked to a user
+        elif (
+            staff_id is not None
+            and db.query(User)
+            .filter(User.staff_id == staff_id, User.is_delete == 0)
+            .first()
+        ):
+            raise HTTPException(
+                status_code=400, detail="Staff is already assigned to a user."
+            )
+
         else:
             hashed_password = pwd_context.hash(password)
             new_user = User(
@@ -64,35 +80,91 @@ def update_user(
     staff_id: Optional[int] = None,
 ):
     user = db.query(User).filter(User.id == user_id, User.is_delete == 0).first()
+
     if not user:
-        return None
-    if username:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # ✅ Email validation (ignore current user)
+    if email and email != user.email:
+        exists = (
+            db.query(User)
+            .filter(User.email == email, User.is_delete == 0, User.id != user_id)
+            .first()
+        )
+        if exists:
+            raise HTTPException(status_code=400, detail="Email already exists.")
+
+    # ✅ Username validation (ignore current user)
+    if username and username != user.username:
+        exists = (
+            db.query(User)
+            .filter(User.username == username, User.is_delete == 0, User.id != user_id)
+            .first()
+        )
+        if exists:
+            raise HTTPException(status_code=400, detail="Username already exists.")
+
+    # ✅ Staff validation (ignore current user)
+    if staff_id is not None and staff_id != user.staff_id:
+        exists = (
+            db.query(User)
+            .filter(User.staff_id == staff_id, User.is_delete == 0, User.id != user_id)
+            .first()
+        )
+        if exists:
+            raise HTTPException(
+                status_code=400, detail="Staff is already assigned to another user."
+            )
+
+    # =========================
+    # Update fields
+    # =========================
+    if username is not None:
         user.username = username
-    if email:
+
+    if email is not None:
         user.email = email
-    if role_id:
+
+    if password:
+        user.password = pwd_context.hash(password)
+
+    if role_id is not None:
         user.role_id = role_id
-    if department_id:
+
+    if department_id is not None:
         user.department_id = department_id
-    if staff_id:
+
+    if staff_id is not None:
         user.staff_id = staff_id
 
     try:
         db.commit()
         db.refresh(user)
-    except IntegrityError as e:
+        return user
+
+    except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="Database integrity error.")
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    return user
 
 
 def delete_user(db, user_id: int):
     user = db.query(User).filter(User.id == user_id, User.is_delete == 0).first()
+
     if not user:
-        return None
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # ✅ Check if user is assigned to any ticket
+    ticket_exists = db.query(Ticket).filter(Ticket.assigned_to_id == user_id).first()
+
+    if ticket_exists:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete user. User is assigned to one or more tickets.",
+        )
     user.is_delete = 1
     try:
         db.commit()
@@ -150,10 +222,6 @@ def getUserByEmail(db, email: str):
     return db.query(User).filter(User.email == email, User.is_delete == 0).first()
 
 
-# def getUserById(db, id: int):
-#     return db.query(User).filter(User.id == id, User.is_delete == 0).first()
-
-
 def getUserById(db, id: int):
     return (
         db.query(User)
@@ -202,3 +270,19 @@ def has_permission(user, permission_name: str):
     if not user.role:
         return False
     return any(p.name == permission_name for p in user.role.permissions)
+
+
+def getUsersWithoutDepartment(db):
+    users = (
+        db.query(
+            User.id,
+            User.username,
+            User.email,
+            Staff.display_name.label("display_name"),
+        )
+        .outerjoin(Staff, User.staff_id == Staff.id)
+        .filter(User.is_delete == 0, User.department_id.is_(None))  # ✅ IMPORTANT
+        .all()
+    )
+
+    return [dict(row._mapping) for row in users]

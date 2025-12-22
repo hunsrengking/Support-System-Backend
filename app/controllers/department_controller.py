@@ -25,6 +25,7 @@ def getDepartmentById(id: int, db: Session = Depends(get_db)):
         )
     return department
 
+
 @router.post("/department")
 # @requirepermissions("create_department")
 def createDepartment(data: DepartmentModel, db: Session = Depends(get_db)):
@@ -43,5 +44,27 @@ def createDepartment(data: DepartmentModel, db: Session = Depends(get_db)):
 def DisableDepartment(id: int, db: Session = Depends(get_db)):
     DisableDepartment = department_service.DisableDepartment(db, id)
     if not DisableDepartment:
-        raise HTTPException(status_code=404, detail=f"Department with id={id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Department with id={id} not found"
+        )
     return {"message": f"Department with id={id} has been disable"}
+
+
+# ===============================
+# ADD MEMBER TO DEPARTMENT
+# ===============================
+@router.post("/department/{id}/members/add")
+def add_department_member(id: int, payload: dict, db: Session = Depends(get_db)):
+    user_id = payload.get("userId")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="userId is required")
+
+    return department_service.addMemberToDepartment(db, id, user_id)
+
+
+# ===============================
+# REMOVE MEMBER FROM DEPARTMENT
+# ===============================
+@router.delete("/department/{id}/members/{user_id}remove")
+def remove_department_member(id: int, user_id: int, db: Session = Depends(get_db)):
+    return department_service.removeMemberFromDepartment(db, id, user_id)
