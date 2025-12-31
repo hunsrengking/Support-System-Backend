@@ -148,7 +148,7 @@ def _export_excel(df: pd.DataFrame, from_date: str | None, to_date: str | None):
         worksheet = workbook.add_worksheet("Reports")  # type: ignore
         writer.sheets["Reports"] = worksheet
 
-        header = workbook.add_format(
+        header = workbook.add_format( # type: ignore
             {
                 "bold": True,
                 "font_size": 14,
@@ -158,10 +158,10 @@ def _export_excel(df: pd.DataFrame, from_date: str | None, to_date: str | None):
                 "font_color": "white",
             }
         )
-        sub_header = workbook.add_format(
+        sub_header = workbook.add_format( # type: ignore
             {"align": "center", "font_size": 11, "bg_color": "#ecf0f1"}
         )
-        col_header = workbook.add_format(
+        col_header = workbook.add_format( # type: ignore
             {
                 "bold": True,
                 "border": 1,
@@ -171,11 +171,11 @@ def _export_excel(df: pd.DataFrame, from_date: str | None, to_date: str | None):
                 "font_color": "white",
             }
         )
-        cell = workbook.add_format({"border": 1, "valign": "vcenter"})
-        cell_right = workbook.add_format(
+        cell = workbook.add_format({"border": 1, "valign": "vcenter"}) # type: ignore
+        cell_right = workbook.add_format( # type: ignore
             {"border": 1, "align": "right", "valign": "vcenter"}
         )
-        date_cell = workbook.add_format(
+        date_cell = workbook.add_format( # type: ignore
             {"border": 1, "num_format": "dd-mmm-yyyy", "valign": "vcenter"}
         )
 
