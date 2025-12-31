@@ -19,8 +19,8 @@ def create_user(
     email: str,
     password: str,
     role_id: int,
-    department_id: int,
-    staff_id: int,
+    department_id: Optional[int] = None,
+    staff_id: Optional[int] = None,
 ):
     try:
         # Check email
@@ -53,8 +53,8 @@ def create_user(
                 email=email,
                 password=hashed_password,
                 role_id=role_id,
-                department_id=department_id,
-                staff_id=staff_id,
+                department_id=department_id if department_id is not None else None,
+                staff_id=staff_id if staff_id is not None else None,
                 is_delete=0,
             )
             db.add(new_user)
