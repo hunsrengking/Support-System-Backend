@@ -23,6 +23,19 @@ class StaffUpdate(StaffBase):
     pass
 
 
+# class StaffResponse(BaseModel):
+#     id: int
+#     external_id: Optional[str]
+#     firstname: Optional[str]
+#     lastname: Optional[str]
+#     display_name: Optional[str]
+#     mobile_no: Optional[str]
+#     join_on_date: Optional[date]
+#     position_id: Optional[int]
+#     position_title: Optional[str]
+#     is_active: bool
+
+
 class StaffResponse(BaseModel):
     id: int
     external_id: Optional[str]
